@@ -1,0 +1,9 @@
+# installers (built), personal keyed builds, caches
+mac/
+ubuntu/
+ca-nhan-co-khoa/
+__pycache__/
+._*
+.DS_Store
+bundled_token
+token
