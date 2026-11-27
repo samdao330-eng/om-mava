@@ -177,6 +177,9 @@ def publish(notes: str, yes: bool):
     make_zip(files, stamp, zpath)
     digest = sha256(zpath)
     installers = build_installers("all", False, stamp)
+    apps = sorted(REL.glob("mac/OM-MAVA-Updater-*.dmg")) + sorted(REL.glob("windows/OM-MAVA-Updater-Setup-*.exe")) \
+        + sorted(REL.glob("ubuntu/OM-MAVA-Updater-*.run"))      # app cài + cập nhật cho 3 hệ máy
+    installers += apps
     body = f"{notes}\n\nOM gốc: {base}\n\nsha256: {digest}"
     print(f"\nBản {tag} — zip {zpath.stat().st_size / 1e6:.0f} MB, {len(files)} file, sha256 {digest[:12]}…")
     print(f"Ghi chú: {notes}")
