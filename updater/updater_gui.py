@@ -10,7 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import update_core as core
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 THEMES = {   # same values as CHECK VIDEO (engine/qc_gui.py)
     "dark": dict(BG="#0f0f10", PANEL="#18181b", LINE="#2a2a2e", TEXT="#ececee", MUTED="#8b8b93", ORANGE="#f26b1d",
                  ORANGE_DARK="#c4530f", INK="#1b1b1b", GREEN="#3ecf8e", AMBER="#f5a524", RED="#ff5a4e",
@@ -416,7 +416,8 @@ class App:
         win.transient(self.root)
         tk.Label(win, text="Token GitHub (chỉ đọc repo om-mava)", bg=C["BG"], fg=C["TEXT"],
                  font=(FONT, 13, "bold")).pack(anchor="w")
-        tk.Label(win, text="Không bắt buộc: app đã có sẵn token. Nhập để dùng token riêng; để trống = giữ như cũ.", bg=C["BG"], fg=C["MUTED"],
+        tk.Label(win, text="Không bắt buộc: app đã có sẵn token. Nhập để dùng token riêng; để trống = giữ như cũ;\n"
+                 "gõ chữ xoa rồi Lưu = bỏ token riêng, dùng lại token có sẵn trong app.", bg=C["BG"], fg=C["MUTED"],
                  font=(FONT, 11)).pack(anchor="w", pady=(2, 8))
         ent = tk.Entry(win, show="•", width=48, bg=C["PANEL"], fg=C["TEXT"], insertbackground=C["TEXT"],
                        relief="flat", highlightthickness=1, highlightbackground=C["LINE"], font=(FONT, 11))
@@ -429,8 +430,11 @@ class App:
         keep.pack(anchor="w")
 
         def save():
-            if ent.get().strip():
-                core.save_token(ent.get())
+            typed = ent.get().strip()
+            if typed.lower() in ("xoa", "xoá", "xóa"):
+                core.clear_token()
+            elif typed:
+                core.save_token(typed)
             try:
                 self.cfg["keep_versions"] = max(1, min(10, int(keep.get())))
             except ValueError:

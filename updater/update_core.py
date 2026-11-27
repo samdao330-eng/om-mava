@@ -101,9 +101,17 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def _request(url, accept="application/vnd.github+json", auth=True, timeout=15):
+def clear_token():
+    """Drop the token typed on this machine, so the app uses the one built into it again."""
+    try:
+        os.remove(TOKEN_FILE)
+    except OSError:
+        pass
+
+
+def _request(url, accept="application/vnd.github+json", auth=True, timeout=15, use_bundled=False):
     headers = {"Accept": accept, "User-Agent": "om-mava-updater", "X-GitHub-Api-Version": "2022-11-28"}
-    tok = token()
+    tok = _read(BUNDLED_TOKEN) if use_bundled else token()
     if auth:
         if not tok:
             raise UpdateError("Chưa có token GitHub — bấm Cài đặt để nhập")
@@ -114,8 +122,14 @@ def _request(url, accept="application/vnd.github+json", auth=True, timeout=15):
     except urllib.error.HTTPError as e:
         if e.code in (301, 302, 303, 307, 308) and e.headers.get("Location"):
             return _request(e.headers["Location"], accept="*/*", auth=False, timeout=timeout)
+        if e.code in (401, 403, 404) and auth and not use_bundled and token_source() == "user" \
+                and _read(BUNDLED_TOKEN):
+            # The token typed in Cài đặt is wrong or lacks access: forget it and use the app's own one.
+            log(f"typed token refused ({e.code}); falling back to the bundled token")
+            clear_token()
+            return _request(url, accept=accept, auth=auth, timeout=timeout, use_bundled=True)
         if e.code in (401, 403):
-            if token_source() == "bundled":
+            if use_bundled or token_source() == "bundled":
                 raise UpdateError("Token có sẵn trong app đã hết hạn / bị thu hồi — xin bản OM MAVA Updater mới")
             raise UpdateError("Token GitHub sai, hết hạn hoặc không có quyền đọc repo")
         if e.code == 404:
