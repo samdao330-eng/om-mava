@@ -43,7 +43,14 @@ def load_fonts():
             return "Inter"
         except (OSError, AttributeError):
             pass
-    return "Helvetica Neue" if sys.platform == "darwin" else "Segoe UI"
+    if sys.platform == "win32" and files:
+        try:                                         # FR_PRIVATE: this process only, nothing installed
+            for f in files:
+                ctypes.windll.gdi32.AddFontResourceExW(f, 0x10, 0)
+            return "Inter"
+        except (OSError, AttributeError):
+            pass
+    return {"darwin": "Helvetica Neue", "win32": "Segoe UI"}.get(sys.platform, "DejaVu Sans")
 
 
 def rounded(cv, x0, y0, x1, y1, r, **kw):
@@ -127,7 +134,7 @@ class App:
         C.update(THEMES[self.theme])
         self.releases, self.busy, self.checked_at, self.message = self.cfg.get("releases_cache", []), False, None, None
         root.title("OM MAVA Updater")
-        root.geometry(self.cfg.get("geometry", "820x720"))
+        root.geometry(self.cfg.get("geometry", "820x820"))
         root.minsize(640, 560)
         root.protocol("WM_DELETE_WINDOW", self.close)
         self.build()
@@ -217,7 +224,30 @@ class App:
         tk.Label(left, text=path if len(path) <= 60 else "…" + path[-59:], bg=C["PANEL"], fg=C["MUTED"],
                  font=(FONT, 11), anchor="w").pack(fill="x", pady=(4, 0))
 
-        # 3. history
+        # 3. tools (ffmpeg, Node, Python, Remotion) — installed by om-setup, no admin rights
+        c4 = Card(body)
+        c4.pack(fill="x", pady=(12, 0))
+        b = c4.body
+        has_om = bool(install) and os.path.isfile(os.path.join(install, "AGENTS.md"))
+        status = core.tool_status(install) if has_om else []
+        missing = [n for n, ok in status if not ok]
+        self.tools_btn = Button(b, "Cài công cụ" if missing or not status else "Cài lại công cụ", self.install_tools,
+                                primary=bool(missing))
+        self.tools_btn.pack(side="right")
+        self.tools_btn.enable(has_om)
+        left = tk.Frame(b, bg=C["PANEL"], width=1)
+        left.pack(side="left", fill="x", expand=True)
+        tk.Label(left, text="Công cụ", bg=C["PANEL"], fg=C["TEXT"], font=(FONT, 13, "bold"), anchor="w").pack(fill="x")
+        row = tk.Frame(left, bg=C["PANEL"])
+        row.pack(fill="x", pady=(6, 0))
+        if status:
+            for n, ok in status:
+                tag(row, f"{n} {'✓' if ok else '—'}", C["TAG_USE"] if ok else C["TAG_NEW"]).pack(side="left", padx=(0, 6))
+        else:
+            tk.Label(row, text="Cài OM trước, rồi app tự cài ffmpeg, Node, Python, Remotion", bg=C["PANEL"],
+                     fg=C["MUTED"], font=(FONT, 11), anchor="w").pack(fill="x")
+
+        # 4. history
         c3 = Card(body)
         c3.pack(fill="x", pady=(12, 0))
         b = c3.body
@@ -273,6 +303,8 @@ class App:
         self.busy = on
         if hasattr(self, "refresh_btn"):
             self.refresh_btn.enable(not on)
+        if hasattr(self, "tools_btn") and on:
+            self.tools_btn.enable(False)
 
     def say(self, text, kind="ok"):
         self.message = (kind, text)
@@ -351,6 +383,15 @@ class App:
             self.build()
         self.work(go, done)
 
+    def install_tools(self):
+        install = self.cfg.get("install_dir")
+        line = lambda s: self.q.put(("line", s))
+
+        def done(_):
+            self.message = ("ok", "Đã cài xong công cụ")
+            self.build()
+        self.work(lambda: core.run_setup(install, line), done)
+
     def open_claude(self, install):
         try:
             core.open_claude(install)
@@ -405,7 +446,7 @@ class App:
 
     def open_log(self):
         os.makedirs(core.HOME, exist_ok=True)
-        subprocess.Popen(["open", core.LOG if os.path.exists(core.LOG) else core.HOME])
+        core.open_path(core.LOG if os.path.exists(core.LOG) else core.HOME)
 
     def toggle_theme(self):
         self.theme = "light" if self.theme == "dark" else "dark"

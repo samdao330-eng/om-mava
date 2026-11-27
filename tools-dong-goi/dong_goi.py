@@ -35,7 +35,7 @@ HERE = Path(__file__).resolve().parent
 SRC = HERE.parent.parent                     # thư mục OM
 REL = SRC / "release"
 REPO = "samdao330-eng/om-mava"
-SETUP = "om-setup.sh"                        # thêm vào gốc gói, từ tools-dong-goi/
+SETUPS = ("om-setup.sh", "om-setup.ps1")    # thêm vào gốc gói, từ tools-dong-goi/ (Mac+Ubuntu, Windows)
 
 # Không bao giờ vào gói nào: phim, thư viện đã cài (khác máy), cache, chính thư mục release.
 ALWAYS_EXCLUDE_TOP = {"projects", "release", "release-ubuntu", ".venv", ".cache", "dist", "scratch", "output"}
@@ -80,7 +80,7 @@ def collect(with_keys: bool) -> list[str]:
         dirs[:] = sorted(keep)
         for f in sorted(files):
             r = f"{rel_d}/{f}" if rel_d else f
-            if _match(f, ALWAYS_EXCLUDE_NAMES) or r == SETUP or os.path.islink(os.path.join(d, f)):
+            if _match(f, ALWAYS_EXCLUDE_NAMES) or r in SETUPS or os.path.islink(os.path.join(d, f)):
                 continue
             if not with_keys and (r in SHARED_EXCLUDE_PATHS or is_secret(f)):
                 continue
@@ -109,7 +109,9 @@ def _entries(files, stamp):
         if r == "VERSION":
             continue
         yield r, p.read_bytes(), _mode(p)
-    yield SETUP, (HERE / SETUP).read_bytes(), 0o755
+    yield "om-setup.sh", (HERE / "om-setup.sh").read_bytes(), 0o755
+    ps1 = (HERE / "om-setup.ps1").read_bytes()          # PowerShell 5 đọc tiếng Việt đúng chỉ khi có BOM
+    yield "om-setup.ps1", (ps1 if ps1.startswith(b"\xef\xbb\xbf") else b"\xef\xbb\xbf" + ps1), 0o644
     yield "VERSION", f"{stamp}\n".encode(), 0o644
 
 
