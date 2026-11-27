@@ -49,7 +49,8 @@ echo "ffmpeg: $(ffmpeg -version | head -1 | cut -d' ' -f3)   Node: $(node -v)"
 # ---- Python 3.12 + thư viện ----
 say "Môi trường Python 3.12 + requirements.txt"
 uv venv --allow-existing --python 3.12 .venv
-uv pip install --python .venv -r requirements.txt
+uv pip install --python .venv -r requirements.txt \
+  || { warn "Tải thư viện lỗi (mạng?) — thử lại sau 5 giây"; sleep 5; uv pip install --python .venv -r requirements.txt; }
 say "Tăng tốc GPU nếu máy có card hợp (bỏ qua nếu không)"
 .venv/bin/python -m lib.accel_setup --json >/dev/null 2>&1 || warn "accel_setup lỗi — OM vẫn chạy bằng CPU."
 
